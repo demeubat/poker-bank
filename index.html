@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0} img{max-width:100%}</style>
+<title>Покерный банк</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: table-side tool. Summary strip on top, players (left) and settlement (right) on desktop, one column on phone. */
+:root {
+  --bg: #e9eeea; --surface: #ffffff; --surface-2: #f4f7f5; --ink: #15201b; --muted: #5a6a62; --line: #d3dcd6;
+  --felt: #1d6a48; --felt-ink: #ffffff; --gain: #1c7a44; --loss: #b4352c; --warn: #9a6200; --warn-bg: #fff3d9;
+  --chip-a: #1d6a48; --chip-b: #ffffff;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1612; --surface: #15201a; --surface-2: #1b2821; --ink: #e4ede8; --muted: #8ea097; --line: #283a31;
+  --felt: #3daa78; --felt-ink: #08130d; --gain: #52c487; --loss: #f0695d; --warn: #e3a840; --warn-bg: #2d2412;
+  --chip-a: #3daa78; --chip-b: #15201a; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0e1612; --surface: #15201a; --surface-2: #1b2821; --ink: #e4ede8; --muted: #8ea097; --line: #283a31;
+  --felt: #3daa78; --felt-ink: #08130d; --gain: #52c487; --loss: #f0695d; --warn: #e3a840; --warn-bg: #2d2412;
+  --chip-a: #3daa78; --chip-b: #15201a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
+h1, h2 { font-family: var(--f-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: 1.35rem; }
+h2 { font-size: 0.95rem; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 12px; min-height: 40px; }
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--felt); outline-offset: 2px; }
+button.primary { background: var(--felt); color: var(--felt-ink); border-color: var(--felt); font-weight: 600; }
+button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+button.ghost:hover { color: var(--ink); border-color: var(--line); }
+button.armed { background: var(--loss); border-color: var(--loss); color: #fff; }
+button:disabled { opacity: .45; cursor: default; }
+input[type="text"], select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 40px; width: 100%; min-width: 0; }
+textarea { font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; resize: vertical; }
+
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.top .title { display: grid; gap: 2px; min-width: 0; }
+.top .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.banner { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; background: var(--warn-bg); color: var(--ink); border: 1px dashed var(--warn); border-radius: var(--r); padding: 12px 14px; }
+
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.strip > div { padding: 12px 14px; display: grid; gap: 2px; border-left: 1px solid var(--line); }
+.strip > div:first-child { border-left: 0; }
+.strip .big { font-family: var(--f-num); font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; width: fit-content; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { color: var(--gain); background: color-mix(in srgb, var(--gain) 12%, transparent); }
+.pill.bad { color: var(--loss); background: color-mix(in srgb, var(--loss) 12%, transparent); }
+.pill.wait { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.players { display: grid; gap: 10px; }
+.player { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 10px; background: var(--surface-2); }
+.player.done { border-color: color-mix(in srgb, var(--felt) 45%, var(--line)); }
+.p-head { display: flex; gap: 8px; align-items: center; }
+.p-name { font-weight: 600; font-size: 1rem; background: transparent !important; border-color: transparent !important; padding-left: 4px !important; }
+.p-name:hover { border-color: var(--line) !important; }
+.p-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.stack { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { width: 22px; height: 22px; border-radius: 50%; background: var(--chip-a); border: 3px dashed var(--chip-b); box-shadow: 0 0 0 1px var(--chip-a); }
+.chip.custom { background: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.p-in { font-size: .88rem; }
+.p-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.p-actions .rebuy { font-family: var(--f-num); font-weight: 600; }
+.custom-row { display: flex; gap: 6px; }
+.custom-row input { max-width: 180px; }
+.p-out { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: end; padding-top: 10px; border-top: 1px dashed var(--line); }
+.p-out label { display: grid; gap: 4px; min-width: 0; }
+.p-out .net { font-family: var(--f-num); font-weight: 600; font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; padding-bottom: 9px; }
+.conv { font-size: .78rem; }
+.gain { color: var(--gain); } .loss { color: var(--loss); }
+
+.add-row { display: flex; gap: 8px; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; min-height: 36px; background: transparent; }
+.seg button[aria-pressed="true"] { background: var(--felt); color: var(--felt-ink); font-weight: 600; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: right; padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+td { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+td:first-child { font-family: var(--f-body); }
+
+.transfers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.transfers li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.transfers .who { min-width: 0; }
+.transfers .arrow { color: var(--muted); padding-inline: 6px; }
+.transfers .amt { font-family: var(--f-num); font-weight: 600; }
+.note { font-size: .88rem; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
+.empty { font-size: .9rem; color: var(--muted); padding: 8px 0; }
+
+details > summary { cursor: pointer; font-family: var(--f-display); font-weight: 700; font-size: .95rem; list-style: none; display: flex; justify-content: space-between; gap: 8px; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::after { content: "+"; color: var(--muted); font-family: var(--f-num); }
+details[open] > summary::after { content: "–"; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 280px; overflow-y: auto; font-size: .88rem; }
+.log li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 8px; }
+.hist { display: grid; gap: 8px; }
+.hist-item { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; background: var(--surface-2); }
+.hist-item pre { margin: 0; white-space: pre-wrap; font-family: var(--f-num); font-size: .82rem; }
+.hist-item .row { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.form { display: grid; gap: 12px; }
+.form .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.form label { display: grid; gap: 4px; min-width: 0; }
+.counter { display: flex; gap: 6px; align-items: center; }
+.counter input { width: 72px; text-align: center; font-family: var(--f-num); font-weight: 600; font-size: 1.05rem; }
+.counter button { width: 44px; font-size: 1.1rem; font-weight: 600; }
+.names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.names label { grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 6px; }
+.names .n { font-family: var(--f-num); color: var(--muted); text-align: right; font-size: .85rem; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 500; z-index: 10; }
+
+@media (max-width: 820px) {
+  .cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .strip > div:nth-child(3) { border-left: 0; }
+  .strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .form .grid3, .names { grid-template-columns: minmax(0, 1fr); }
+  .p-out { grid-template-columns: minmax(0, 1fr) auto; }
+  .p-out .net { grid-column: 1 / -1; text-align: left; padding-bottom: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .player, .transfers li { transition: border-color .2s; }
+}
+</style>
+
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const KEY = "poker-bank-v1";
+  const $ = (s, el = document) => el.querySelector(s);
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const now = () => Date.now();
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const toC = x => Math.round(x * 100);           // money → cents
+  const parseNum = v => { const n = parseFloat(String(v).replace(/\s/g, "").replace(",", ".")); return isFinite(n) ? n : null; };
+  const hhmm = t => new Date(t).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  const ddmm = t => new Date(t).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+
+  function exampleGame() {
+    const t0 = now() - 3.5 * 3600e3;
+    const mk = (name, buys, cash) => ({ id: uid(), name, buys: buys.map((a, i) => ({ amt: a, t: t0 + i * 3000e3 })), cash });
+    return {
+      id: uid(), title: "Пример: пятничная игра", started: t0, currency: "₽", defaultBuyIn: 5000, chipRate: 1,
+      example: true, mode: "direct", bankerId: null,
+      players: [
+        mk("Аня", [5000], 14200), mk("Борис", [5000, 5000, 5000], 3800), mk("Вика", [5000, 5000], 12500),
+        mk("Гоша", [5000], 0), mk("Дима", [5000, 5000], 14500)
+      ],
+      log: [{ t: t0, text: "Пример игры: 5 игроков, бай-ин 5 000 ₽" }]
+    };
+  }
+
+  let state = null;
+  try { state = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { state = null; }
+  if (!state || !state.game && !state.setup) state = { game: exampleGame(), history: [], setup: false };
+  state.history = state.history || [];
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function log(text) { if (state.game) state.game.log.unshift({ t: now(), text }); }
+
+  const g = () => state.game;
+  const cur = () => (g() && g().currency) || "₽";
+  function fmt(x, sign) {
+    const s = (Math.round(Math.abs(x) * 100) / 100).toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+    const p = sign ? (x > 0.004 ? "+" : x < -0.004 ? "−" : "") : (x < -0.004 ? "−" : "");
+    return p + s + " " + cur();
+  }
+  const sumBuys = p => p.buys.reduce((a, b) => a + b.amt, 0);
+  const cashMoney = p => p.cash == null ? null : p.cash * (g().chipRate || 1);
+  const net = p => p.cash == null ? null : cashMoney(p) - sumBuys(p);
+
+  // ---- settlement ----
+  function settle(game) {
+    const ps = game.players.filter(p => p.buys.length || p.cash != null);
+    const missing = ps.filter(p => p.cash == null);
+    const nets = ps.map(p => ({ p, c: p.cash == null ? 0 : toC(cashMoney(p) - sumBuys(p)) }));
+    const diff = nets.reduce((a, n) => a + n.c, 0);
+    let transfers = [];
+    if (game.mode === "bank" && game.bankerId && ps.some(p => p.id === game.bankerId)) {
+      const banker = ps.find(p => p.id === game.bankerId);
+      nets.forEach(n => {
+        if (n.p === banker || n.c === 0) return;
+        transfers.push(n.c < 0 ? { from: n.p, to: banker, c: -n.c } : { from: banker, to: n.p, c: n.c });
+      });
+    } else {
+      const debt = nets.filter(n => n.c < 0).map(n => ({ p: n.p, c: -n.c })).sort((a, b) => b.c - a.c);
+      const cred = nets.filter(n => n.c > 0).map(n => ({ p: n.p, c: n.c })).sort((a, b) => b.c - a.c);
+      let i = 0, j = 0;
+      while (i < debt.length && j < cred.length) {
+        const c = Math.min(debt[i].c, cred[j].c);
+        if (c > 0) transfers.push({ from: debt[i].p, to: cred[j].p, c });
+        debt[i].c -= c; cred[j].c -= c;
+        if (debt[i].c === 0) i++;
+        if (cred[j].c === 0) j++;
+      }
+    }
+    return { ps, missing, diff, transfers };
+  }
+
+  function summaryText(game) {
+    const s = settle(game);
+    const lines = [`${game.title} · ${ddmm(game.started)}`];
+    const bank = game.players.reduce((a, p) => a + sumBuys(p), 0);
+    lines.push(`Банк: ${fmt(bank)}`, "", "Итоги:");
+    s.ps.slice().sort((a, b) => (net(b) || 0) - (net(a) || 0)).forEach(p => {
+      lines.push(`${p.name}: ${p.cash == null ? "стек не указан" : fmt(net(p), true)} (внёс ${fmt(sumBuys(p))})`);
+    });
+    lines.push("", "Переводы:");
+    if (!s.transfers.length) lines.push("никто никому не должен");
+    s.transfers.forEach(t => lines.push(`${t.from.name} → ${t.to.name}: ${fmt(t.c / 100)}`));
+    if (s.diff !== 0) lines.push("", `Внимание: стеки не сходятся с банком на ${fmt(s.diff / 100, true)}`);
+    return lines.join("\n");
+  }
+
+  // ---- two-step confirm buttons (the viewer has no confirm()) ----
+  function armed(btn, label) {
+    if (btn.classList.contains("armed")) return true;
+    const orig = btn.textContent;
+    btn.classList.add("armed"); btn.textContent = label;
+    setTimeout(() => { if (btn.isConnected) { btn.classList.remove("armed"); btn.textContent = orig; } }, 3000);
+    return false;
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2200);
+  }
+
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); toast("Скопировано"); }
+    catch (e) {
+      const ta = $("#copy-fallback"); if (ta) { ta.hidden = false; ta.value = text; ta.focus(); ta.select(); }
+      toast("Выделил текст — скопируйте вручную");
+    }
+  }
+
+  // ---- render ----
+  function render() {
+    const app = $("#app");
+    if (state.setup || !g()) { app.innerHTML = setupView(); return; }
+    const game = g();
+    app.innerHTML = `
+      ${game.example ? `<div class="banner"><span>Это пример, чтобы было видно, как всё работает. Ваши данные хранятся только в этом браузере.</span><button class="primary" data-act="new">Начать свою игру</button></div>` : ""}
+      <div class="top">
+        <div class="title"><span class="label">Кэш-игра · Texas Hold’em · с ${hhmm(game.started)}, ${ddmm(game.started)}</span><h1>${esc(game.title)}</h1></div>
+        <div class="actions">
+          <button data-act="settings" id="btn-settings">Настройки стола</button>
+          <button data-act="new">Новая игра</button>
+        </div>
+      </div>
+      <div class="panel" id="settings" hidden>
+        <div class="form"><div class="grid3">
+          <label><span class="label">Бай-ин по умолчанию</span><input type="text" inputmode="decimal" id="set-buyin" value="${game.defaultBuyIn}"></label>
+          <label><span class="label">Валюта</span><input type="text" id="set-cur" value="${esc(game.currency)}" maxlength="4"></label>
+          <label><span class="label">Цена одной фишки</span><input type="text" inputmode="decimal" id="set-rate" value="${game.chipRate}"></label>
+        </div>
+        <span class="muted" style="font-size:.85rem">Если стеки считаете в деньгах, оставьте цену фишки 1. Если в фишках, укажите, сколько стоит одна, и программа переведёт стек в деньги.</span>
+        <label><span class="label">Название игры</span><input type="text" id="set-title" value="${esc(game.title)}"></label></div>
+      </div>
+      <div class="strip" id="strip"></div>
+      <div class="cols">
+        <section class="panel">
+          <div class="panel-head"><h2>Игроки</h2><span class="muted" style="font-size:.85rem">Фишка = один заход в игру</span></div>
+          <div class="players" id="players">${game.players.map(playerView).join("")}</div>
+          <form class="add-row" id="add-form"><input type="text" id="add-name" placeholder="Имя нового игрока" autocomplete="off"><button class="primary" type="submit">Посадить за стол</button></form>
+        </section>
+        <section class="panel" id="settle"></section>
+      </div>
+      <section class="panel"><details id="log-details"><summary>Журнал игры</summary><ul class="log" id="log" style="margin-top:12px"></ul></details></section>
+      ${state.history.length ? `<section class="panel"><details><summary>Прошлые игры (${state.history.length})</summary><div class="hist" style="margin-top:12px">${historyView()}</div></details></section>` : ""}
+    `;
+    renderDerived();
+  }
+
+  function playerView(p) {
+    const game = g();
+    const chips = p.buys.map(b => `<span class="chip${b.amt !== game.defaultBuyIn ? " custom" : ""}" title="${fmt(b.amt)} · ${hhmm(b.t)}"></span>`).join("");
+    const rateNote = game.chipRate !== 1 ? " (в фишках)" : "";
+    return `<div class="player${p.cash != null ? " done" : ""}" data-id="${p.id}">
+      <div class="p-head"><input type="text" class="p-name" id="name-${p.id}" value="${esc(p.name)}" aria-label="Имя игрока"><button class="ghost" data-act="del" title="Убрать игрока">Убрать</button></div>
+      <div class="p-meta"><div class="stack">${chips || '<span class="muted" style="font-size:.85rem">ещё не заходил</span>'}</div>
+        <span class="p-in muted">${p.buys.length ? `${p.buys.length === 1 ? "бай-ин" : `бай-ин + ${p.buys.length - 1} ${plural(p.buys.length - 1, "ребай", "ребая", "ребаев")}`} · <b class="num" style="color:var(--ink)">${fmt(sumBuys(p))}</b>` : ""}</span></div>
+      <div class="p-actions">
+        <button class="rebuy" data-act="buy">+ ${fmt(game.defaultBuyIn)}</button>
+        <button data-act="custom">Другая сумма</button>
+        <button class="ghost" data-act="undo" ${p.buys.length ? "" : "disabled"}>Отменить последний</button>
+      </div>
+      <form class="custom-row" data-form="custom" hidden><input type="text" inputmode="decimal" id="custom-${p.id}" placeholder="Сумма, ${esc(game.currency)}"><button class="primary" type="submit">Добавить</button></form>
+      <div class="p-out">
+        <label><span class="label">Стек на выходе${rateNote}</span><input type="text" inputmode="decimal" id="cash-${p.id}" data-cash value="${p.cash == null ? "" : p.cash}" placeholder="не указан"></label>
+        <button data-act="zero" title="Проиграл всё">0</button>
+        <output class="net" id="net-${p.id}"></output>
+      </div>
+      <div class="conv muted" id="conv-${p.id}" ${game.chipRate !== 1 ? "" : "hidden"}></div>
+    </div>`;
+  }
+
+  function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c; }
+
+  function renderDerived() {
+    const game = g();
+    const bank = game.players.reduce((a, p) => a + sumBuys(p), 0);
+    const buysCount = game.players.reduce((a, p) => a + p.buys.length, 0);
+    const rebuys = buysCount - game.players.filter(p => p.buys.length).length;
+    const s = settle(game);
+    const entered = s.ps.length - s.missing.length;
+    const cashSum = s.ps.reduce((a, p) => a + (cashMoney(p) || 0), 0);
+
+    let pill;
+    if (!s.ps.length) pill = `<span class="pill wait">Нет заходов</span>`;
+    else if (s.missing.length) pill = `<span class="pill wait">Идёт игра</span>`;
+    else if (s.diff === 0) pill = `<span class="pill ok">Сходится</span>`;
+    else pill = `<span class="pill bad">Расхождение ${fmt(s.diff / 100, true)}</span>`;
+
+    $("#strip").innerHTML = `
+      <div><span class="label">Банк на столе</span><span class="big">${fmt(bank)}</span></div>
+      <div><span class="label">Заходов / ребаев</span><span class="big">${buysCount} / ${rebuys}</span></div>
+      <div><span class="label">Стеки введены</span><span class="big">${entered} из ${s.ps.length}</span></div>
+      <div><span class="label">Баланс</span>${pill}<span class="muted num" style="font-size:.8rem">вынесли ${fmt(cashSum)}</span></div>`;
+
+    game.players.forEach(p => {
+      const el = $("#net-" + p.id); if (!el) return;
+      const n = net(p);
+      el.textContent = n == null ? "" : fmt(n, true);
+      el.className = "net " + (n == null ? "" : n > 0.004 ? "gain" : n < -0.004 ? "loss" : "muted");
+      const conv = $("#conv-" + p.id);
+      if (conv && game.chipRate !== 1) conv.textContent = p.cash == null ? "" : `${p.cash.toLocaleString("ru-RU")} фишек × ${game.chipRate} = ${fmt(cashMoney(p))}`;
+      const card = el.closest(".player"); if (card) card.classList.toggle("done", p.cash != null);
+    });
+
+    $("#settle").innerHTML = settleView(game, s);
+    const logEl = $("#log");
+    if (logEl) logEl.innerHTML = game.log.map(l => `<li><span class="muted num">${hhmm(l.t)}</span><span>${esc(l.text)}</span></li>`).join("") || `<li class="empty">Пока пусто</li>`;
+  }
+
+  function settleView(game, s) {
+    const bankerOpts = s.ps.map(p => `<option value="${p.id}" ${p.id === game.bankerId ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+    const rows = s.ps.slice().sort((a, b) => (net(b) ?? -1e15) - (net(a) ?? -1e15)).map(p => {
+      const n = net(p);
+      return `<tr><td>${esc(p.name)}</td><td>${fmt(sumBuys(p))}</td><td>${p.cash == null ? "—" : fmt(cashMoney(p))}</td><td class="${n == null ? "muted" : n > 0.004 ? "gain" : n < -0.004 ? "loss" : ""}">${n == null ? "—" : fmt(n, true)}</td></tr>`;
+    }).join("");
+    let body;
+    if (!s.ps.length) body = `<p class="empty">Добавьте игроков и отметьте их заходы. Расчёт появится здесь.</p>`;
+    else {
+      const notes = [];
+      if (s.missing.length) notes.push(`Не введены стеки: ${s.missing.map(p => esc(p.name)).join(", ")}. Пока они считаются нулевыми, так что расчёт предварительный.`);
+      if (!s.missing.length && s.diff !== 0) notes.push(`Сумма стеков ${s.diff > 0 ? "больше" : "меньше"} банка на <b class="num">${fmt(Math.abs(s.diff) / 100)}</b>. Пересчитайте фишки или проверьте, не забыли ли отметить ребай. Переводы ниже покрывают только сходящуюся часть.`);
+      body = `
+        ${notes.map(n => `<div class="note">${n}</div>`).join("")}
+        <div class="table-wrap"><table><thead><tr><th>Игрок</th><th>Внёс</th><th>Вынес</th><th>Итог</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div style="display:grid;gap:8px">
+          <span class="label">Кто кому переводит</span>
+          ${s.transfers.length ? `<ul class="transfers">${s.transfers.map(t => `<li><span class="who"><b>${esc(t.from.name)}</b><span class="arrow">→</span><b>${esc(t.to.name)}</b></span><span class="amt">${fmt(t.c / 100)}</span></li>`).join("")}</ul>` : `<p class="empty">Никто никому не должен.</p>`}
+          <span class="muted" style="font-size:.82rem">${game.mode === "bank" ? "Все рассчитываются через одного человека." : `Минимум переводов: ${s.transfers.length}. Проигравшие платят напрямую выигравшим.`}</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="primary" data-act="copy">Скопировать для чата</button>
+          ${game.example ? "" : `<button data-act="finish" id="btn-finish">Завершить и сохранить</button>`}
+        </div>
+        <textarea id="copy-fallback" rows="8" hidden readonly></textarea>`;
+    }
+    return `<div class="panel-head"><h2>Расчёт</h2>
+        <div class="seg" role="group" aria-label="Способ расчёта"><button data-act="mode-direct" aria-pressed="${game.mode !== "bank"}">Напрямую</button><button data-act="mode-bank" aria-pressed="${game.mode === "bank"}">Через банкира</button></div></div>
+      ${game.mode === "bank" ? `<label style="display:grid;gap:4px"><span class="label">Банкир (у кого деньги)</span><select id="banker">${bankerOpts}</select></label>` : ""}
+      ${body}`;
+  }
+
+  function historyView() {
+    return state.history.map((h, i) => `<div class="hist-item" data-hist="${i}">
+      <div class="row"><b>${esc(h.title)}</b><span class="muted num" style="font-size:.85rem">${ddmm(h.started)}</span></div>
+      <pre>${esc(h.text)}</pre>
+      <div class="row"><button data-act="hcopy">Скопировать</button><button class="ghost" data-act="hdel">Удалить</button></div>
+    </div>`).join("");
+  }
+
+  function setupView() {
+    const last = state.game && !state.game.example ? state.game : state.lastPlayers ? { players: state.lastPlayers.map(name => ({ name })) } : null;
+    const names = last ? last.players.map(p => p.name) : [];
+    const prev = state.game || {};
+    return `
+      <div class="top"><div class="title"><span class="label">Кэш-игра · Texas Hold’em</span><h1>Новая игра</h1></div>
+        ${state.game ? `<div class="actions"><button data-act="cancel-setup">Вернуться к текущей</button></div>` : ""}</div>
+      <form class="panel form" id="setup-form">
+        <label><span class="label">Название</span><input type="text" id="new-title" value="Игра ${ddmm(now())}"></label>
+        <div class="grid3">
+          <label><span class="label">Бай-ин</span><input type="text" inputmode="decimal" id="new-buyin" value="${prev.example ? 5000 : prev.defaultBuyIn || 5000}"></label>
+          <label><span class="label">Валюта</span><input type="text" id="new-cur" value="${esc(prev.currency || "₽")}" maxlength="4"></label>
+          <label><span class="label">Цена одной фишки</span><input type="text" inputmode="decimal" id="new-rate" value="${prev.example ? 1 : prev.chipRate || 1}"></label>
+        </div>
+        <div style="display:grid;gap:4px"><span class="label">Количество игроков</span>
+          <div class="counter"><button type="button" data-act="cnt-dec" aria-label="Меньше игроков">−</button><input type="text" inputmode="numeric" id="new-count" value="${names.length || 6}" aria-label="Количество игроков"><button type="button" data-act="cnt-inc" aria-label="Больше игроков">+</button></div></div>
+        <div style="display:grid;gap:6px"><span class="label">Имена</span><div class="names" id="new-names">${nameFields(names.length || 6, names)}</div></div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="new-autobuy" checked style="width:18px;height:18px"> Сразу отметить всем первый бай-ин</label>
+        ${state.game && !state.game.example ? `<p class="note" style="margin:0">Текущая игра «${esc(state.game.title)}» будет сохранена в «Прошлые игры».</p>` : ""}
+        <div><button class="primary" type="submit">Сесть за стол</button></div>
+      </form>`;
+  }
+
+  const MAX_PLAYERS = 20;
+  function nameFields(n, names) {
+    let h = "";
+    for (let i = 0; i < n; i++) h += `<label><span class="n">${i + 1}</span><input type="text" id="new-name-${i}" data-name value="${esc(names[i] || "")}" placeholder="Игрок ${i + 1}" autocomplete="off"></label>`;
+    return h;
+  }
+  function setCount(n) {
+    n = Math.max(1, Math.min(MAX_PLAYERS, n || 1));
+    const box = $("#new-names");
+    const cur = [...box.querySelectorAll("[data-name]")].map(i => i.value);
+    if (cur.length !== n) box.innerHTML = nameFields(n, cur);
+    return n;
+  }
+
+  // ---- actions ----
+  function findP(el) { const card = el.closest(".player"); return card && g().players.find(p => p.id === card.dataset.id); }
+
+  function archiveCurrent() {
+    const game = g();
+    if (!game || game.example || !game.players.some(p => p.buys.length)) return;
+    state.history.unshift({ title: game.title, started: game.started, text: summaryText(game) });
+    state.history = state.history.slice(0, 50);
+  }
+
+  function addBuy(p, amt) {
+    p.buys.push({ amt, t: now() });
+    log(`${p.name}: ${p.buys.length === 1 ? "бай-ин" : "ребай"} ${fmt(amt)}`);
+  }
+
+  function replacePlayer(p) {
+    const old = $(`.player[data-id="${p.id}"]`);
+    const tmp = document.createElement("div"); tmp.innerHTML = playerView(p);
+    old.replaceWith(tmp.firstElementChild);
+  }
+
+  document.addEventListener("click", e => {
+    const btn = e.target.closest("button[data-act]"); if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === "cnt-dec" || act === "cnt-inc") {
+      const c = $("#new-count");
+      c.value = setCount((parseInt(c.value, 10) || 0) + (act === "cnt-inc" ? 1 : -1));
+      return;
+    }
+    const game = g();
+    if (act === "new") { state.setup = true; save(); render(); window.scrollTo(0, 0); return; }
+    if (act === "cancel-setup") { state.setup = false; save(); render(); return; }
+    if (act === "settings") { const s = $("#settings"); s.hidden = !s.hidden; return; }
+    if (act === "copy") { copy(summaryText(game)); return; }
+    if (act === "hcopy") { copy(state.history[+btn.closest("[data-hist]").dataset.hist].text); return; }
+    if (act === "hdel") { if (!armed(btn, "Точно удалить?")) return; state.history.splice(+btn.closest("[data-hist]").dataset.hist, 1); save(); render(); return; }
+    if (act === "mode-direct" || act === "mode-bank") {
+      game.mode = act === "mode-bank" ? "bank" : "direct";
+      if (game.mode === "bank" && !game.bankerId) { const f = game.players.find(p => p.buys.length); game.bankerId = f && f.id; }
+      save(); renderDerived(); return;
+    }
+    if (act === "finish") {
+      if (!armed(btn, "Нажмите ещё раз, чтобы завершить")) return;
+      state.lastPlayers = game.players.map(p => p.name);
+      archiveCurrent(); state.game = null; state.setup = true; save(); render(); toast("Игра сохранена"); return;
+    }
+    const p = findP(btn); if (!p) return;
+    if (act === "buy") { addBuy(p, game.defaultBuyIn); save(); replacePlayer(p); renderDerived(); toast(`${p.name}: +${fmt(game.defaultBuyIn)}`); }
+    else if (act === "custom") { const f = btn.closest(".player").querySelector("[data-form=custom]"); f.hidden = !f.hidden; if (!f.hidden) f.querySelector("input").focus(); }
+    else if (act === "undo") { const b = p.buys.pop(); log(`${p.name}: отменён заход ${fmt(b.amt)}`); save(); replacePlayer(p); renderDerived(); }
+    else if (act === "zero") { p.cash = 0; log(`${p.name}: ушёл с нулём`); save(); $("#cash-" + p.id).value = "0"; renderDerived(); }
+    else if (act === "del") {
+      if (!armed(btn, "Убрать?")) return;
+      game.players = game.players.filter(x => x !== p);
+      if (game.bankerId === p.id) game.bankerId = null;
+      log(`${p.name} убран из игры`); save(); btn.closest(".player").remove(); renderDerived();
+    }
+  });
+
+  document.addEventListener("submit", e => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.id === "add-form") {
+      const name = $("#add-name").value.trim(); if (!name) return;
+      const p = { id: uid(), name, buys: [], cash: null };
+      g().players.push(p); log(`${name} сел за стол`); save();
+      const tmp = document.createElement("div"); tmp.innerHTML = playerView(p);
+      $("#players").appendChild(tmp.firstElementChild);
+      $("#add-name").value = ""; renderDerived(); return;
+    }
+    if (f.dataset.form === "custom") {
+      const p = findP(f); const v = parseNum(f.querySelector("input").value);
+      if (!v || v <= 0) { toast("Введите сумму больше нуля"); return; }
+      addBuy(p, v); save(); replacePlayer(p); renderDerived(); return;
+    }
+    if (f.id === "setup-form") {
+      const buyIn = parseNum($("#new-buyin").value), rate = parseNum($("#new-rate").value);
+      if (!buyIn || buyIn <= 0) { toast("Укажите бай-ин больше нуля"); return; }
+      const names = [...document.querySelectorAll("#new-names [data-name]")].map((el, i) => el.value.trim() || `Игрок ${i + 1}`);
+      const auto = $("#new-autobuy").checked;
+      if (state.game && !state.game.example) archiveCurrent();
+      const t = now();
+      state.game = {
+        id: uid(), title: $("#new-title").value.trim() || `Игра ${ddmm(t)}`, started: t,
+        currency: $("#new-cur").value.trim() || "₽", defaultBuyIn: buyIn, chipRate: rate && rate > 0 ? rate : 1,
+        mode: "direct", bankerId: null, example: false, log: [],
+        players: names.map(name => ({ id: uid(), name, buys: auto ? [{ amt: buyIn, t }] : [], cash: null }))
+      };
+      log(`Игра началась: ${names.length} ${plural(names.length, "игрок", "игрока", "игроков")}, бай-ин ${fmt(buyIn)}`);
+      state.setup = false; save(); render(); window.scrollTo(0, 0);
+    }
+  });
+
+  document.addEventListener("keydown", e => {
+    const el = e.target;
+    if (e.key !== "Enter" || !el.matches("[data-name]")) return;
+    const next = $("#new-name-" + (+el.id.slice(9) + 1));
+    if (next) { e.preventDefault(); next.focus(); }
+  });
+
+  document.addEventListener("input", e => {
+    const el = e.target;
+    if (el.id === "new-count") { const n = parseInt(el.value, 10); if (n > 0) setCount(n); return; }
+    if (el.matches("[data-cash]")) {
+      const p = findP(el); const v = el.value.trim();
+      p.cash = v === "" ? null : parseNum(v);
+      if (p.cash != null && p.cash < 0) p.cash = 0;
+      save(); renderDerived();
+    }
+  });
+
+  document.addEventListener("change", e => {
+    const el = e.target, game = g();
+    if (el.id === "new-count") { el.value = setCount(parseInt(el.value, 10)); return; }
+    if (el.matches("[data-cash]")) { const p = findP(el); if (p.cash != null) log(`${p.name}: стек ${p.cash.toLocaleString("ru-RU")}${game.chipRate !== 1 ? " фишек" : " " + game.currency}`); save(); renderDerived(); }
+    else if (el.classList.contains("p-name")) { const p = findP(el); const n = el.value.trim(); if (n) { p.name = n; save(); renderDerived(); } else el.value = p.name; }
+    else if (el.id === "banker") { game.bankerId = el.value; save(); renderDerived(); }
+    else if (el.id === "set-buyin") { const v = parseNum(el.value); if (v > 0) { game.defaultBuyIn = v; log(`Бай-ин по умолчанию: ${fmt(v)}`); save(); rerenderKeepSettings(); } }
+    else if (el.id === "set-cur") { game.currency = el.value.trim() || "₽"; save(); rerenderKeepSettings(); }
+    else if (el.id === "set-rate") { const v = parseNum(el.value); if (v > 0) { game.chipRate = v; save(); rerenderKeepSettings(); } }
+    else if (el.id === "set-title") { game.title = el.value.trim() || game.title; save(); rerenderKeepSettings(); }
+  });
+
+  function rerenderKeepSettings() { render(); $("#settings").hidden = false; }
+
+  render();
+})();
+</script>
+</body>
+</html>
